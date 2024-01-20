@@ -1,7 +1,58 @@
 
+# Manually enters data from CBT & insomnia meta-analysis.
 
-# Annals meta CBT insomina, page 8
-# total sleep time
+# PRELIMINARIES ----------------------------------------------------
+
+#rm(list=ls())
+
+# This script uses renv to preserve the R environment specs (e.g., package versions.)
+library(renv)
+# run this if you want to reproduce results using the R environment we had:
+# renv::restore()
+
+toLoad = c("crayon",
+           "dplyr",
+           "foreach",
+           "doParallel",
+           "metafor",
+           "robumeta",
+           "data.table",
+           "purrr",
+           "metRology",
+           "fansi",
+           "MetaUtility",
+           "ICC",
+           "cfdecomp",
+           "tidyr",
+           "tibble",
+           "testthat",
+           "rstan", # note: to reinstall this one, need to use high-mem session
+           "optimx",
+           "weightr",
+           "phacking",
+           "here")  # note: to reinstall this one, need ml load jags
+
+# to install everything
+# lapply(toLoad, install.packages)
+
+lapply( toLoad,
+        require,
+        character.only = TRUE)
+
+
+
+# prevent masking
+select = dplyr::select
+
+# run this only if you want to update the R environment specs
+# setwd(here())
+# renv::snapshot()
+
+
+# ENTER DATA  -------------------------------------------------
+
+# Annals meta CBT insomnia, page 8
+# total sleep time outcome
 
 yi = c(2.04, 10.84, -2.00, 33.70, 19.10, -4.20, 56.40, -9.67, 13.20, -12.32, 5.37, 13.50, -6.47, 10.20, 16.20, 11.78,
   -5.23, 47.90, 62.00, 18.60,
@@ -30,3 +81,12 @@ d$sei = sqrt(d$vi)
 rma.uni(yi = yi, vi = vi, data = d %>% filter(group=="Posttreatment"), knha = TRUE)
 rma.uni(yi = yi, vi = vi, data = d %>% filter(group=="Early follow-up"), knha = TRUE)
 rma.uni(yi = yi, vi = vi, data = d %>% filter(group=="Late follow-up"), knha = TRUE)
+
+
+# SAVE DATA  -------------------------------------------------
+
+setwd(here())
+fwrite(d, "data_insomnia.csv")
+
+
+
