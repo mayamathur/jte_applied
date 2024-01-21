@@ -3,24 +3,24 @@
     "path": "~/Dropbox/Personal computer/Independent studies/2024/JTE (Jeffreys estimation of tau)/Applied example/prep_applied_JTE.R",
     "project_path": "prep_applied_JTE.R",
     "type": "r_source",
-    "hash": "918028727",
+    "hash": "0",
     "contents": "",
-    "dirty": false,
+    "dirty": true,
     "created": 1705759245844.0,
     "source_on_save": false,
     "relative_order": 4,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "47,15",
-        "scrollLine": "35"
+        "cursorPosition": "230,0",
+        "scrollLine": "175"
     },
     "folds": "",
-    "lastKnownWriteTime": 1705759563,
+    "lastKnownWriteTime": 1705846394,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1705759563872,
+    "last_content_update": 1705846399147,
     "read_only": false,
     "read_only_alternatives": []
 }

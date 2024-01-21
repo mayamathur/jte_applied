@@ -106,6 +106,21 @@ for ( .group in unique(d$group) ) {
   
   rep.res = data.frame()
   
+  
+  rep.res = run_method_safe(method.label = c("DL"),
+                            method.fn = function() {
+                              mod = rma( yi = .dat$yi,
+                                         vi = .dat$vi,
+                                         method = "DL",
+                                         knha = TRUE )
+                              
+                              report_meta(mod, .mod.type = "rma")
+                            },
+                            .rep.res = rep.res )
+  
+  
+  srr(rep.res)
+  
   rep.res = run_method_safe(method.label = c("REML"),
                             method.fn = function() {
                               mod = rma( yi = .dat$yi,
@@ -186,24 +201,48 @@ for ( .group in unique(d$group) ) {
   
 }
 
+# remove the extra Jeffreys methods
+rsp = rs %>% filter(method %in% c("REML", "DL", "Jeffreys") )
+
+
+
+setwd(results.dir)
+fwrite(rsp, "insomnia_forest_results.csv")
+
+
+# sanity check: do REML estimates agree with published forest plots?
+# close, but not exact
+rsp %>% filter( method == "REML" ) %>%
+  select( group, Mhat, MLo, MHi )
+
+# maybe they used DL instead?
+rsp %>% filter( method == "DL" ) %>%
+  select( group, Mhat, MLo, MHi )
+
+
+
 
 # FOREST PLOT ----------------------------------------------------
 
-
-
-# set colors to agree with 
-
-my.colors = c("orange", "black")
-
-rsp = rs %>% filter(method %in% c("REML", "Jeffreys") )
-rsp_REML = rs %>% filter(method == "REML")
-
-rsp_Jeff = rs %>% filter(method == "Jeffreys")
-
-
-
-
-
+# set y-axis order
+correct.order = c( "SOL; posttreatment (k = 16)",
+                   "SOL; early follow-up (k = 4)",
+                   "SOL; late follow-up (k = 3)",
+                   
+                   "WASO; posttreatment (k = 14)",
+                   "WASO; early follow-up (k = 3)",
+                   "WASO; late follow-up (k = 3)",
+                   
+                   "TST; posttreatment (k = 16)",
+                   "TST; early follow-up (k = 4)",
+                   "TST; late follow-up (k = 4)",
+                   
+                   "SE%; posttreatment (k = 16)",
+                   "SE%; early follow-up (k = 4)",
+                   "SE%; late follow-up (k = 4)" )
+  
+rsp$group = factor( rsp$group, levels = rev(correct.order) )
+levels(rsp$group)
 
 
 
@@ -252,6 +291,20 @@ p = ggplot( data = rsp,
          panel.grid.major.y = element_blank(),
          panel.grid.minor.y = element_blank(),
          legend.position = "bottom" )
+
+
+p
+
+
+#bm: make sure REML results all agree with the original paper
+# also work on plot order :)
+# report: For what percent of metas < 10 studies was Jeffreys more precise? and for what percent of larger ones?
+# look into how I could report p-values
+
+
+
+
+
 
 
 
