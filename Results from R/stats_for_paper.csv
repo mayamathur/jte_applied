@@ -1,0 +1,13 @@
+name,value,section
+Mean perc narrower Jeffreys vs winning other method,23,NA
+Mean perc narrower Jeffreys vs winning other method - small metas,36,NA
+Mean perc narrower Jeffreys vs winning other method - larger metas,-3,NA
+Mean perc wider Jeffreys vs winning other method - larger metas,5,NA
+Mean MhatTestReject Jeffreys,58,NA
+Mean MhatTestReject REML,25,NA
+Mean MhatTestReject DL,25,NA
+Mean MhatTestReject Jeffreys - small metas,50,NA
+Mean MhatTestReject REML - small metas,0,NA
+Mean MhatTestReject DL - larger metas,75,NA
+Mean MhatTestReject Jeffreys - larger metas,75,NA
+Mean MhatTestReject REML - larger metas,75,NA

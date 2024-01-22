@@ -215,8 +215,6 @@ for ( .g in unique(d4$group) ) {
 
 
 
-
-
 # combine them
 d = bind_rows(d1, d2, d3, d4)
 names(d)[names(d) == "vyi"] = "vi"

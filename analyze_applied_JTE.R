@@ -99,7 +99,7 @@ d = fread("data_insomnia.csv")
 
 if (exists("rs")) rm(rs)
 
-# fit REML and Jeffreys for each group (i.e., section in their forest plot)
+# fit Jeffreys, DL, and REML for each group (i.e., section in their forest plot)
 for ( .group in unique(d$group) ) {
   
   .dat = d %>% filter(group==.group)
@@ -201,30 +201,36 @@ for ( .group in unique(d$group) ) {
   
 }
 
+
+# POST-PROCESSING
+
 # remove the extra Jeffreys methods
 rsp = rs %>% filter(method %in% c("REML", "DL", "Jeffreys") )
 
+# ratio of CI width of Jeffreys vs. the winner among the other two methods
+rsp = rsp %>% group_by(group) %>%
+  mutate( MhatWidth = MHi - MLo, 
+          MhatTestReject = sign(MHi) == sign(MLo),
+          CI_ratio = min( MhatWidth[ method != "Jeffreys" ] ) / MhatWidth[ method == "Jeffreys" ] )
+
+          # OnlyJeffreysRejects = MhatTestReject[ method != "Jeffreys" ] == 0 &
+          #   MhatTestReject[ method == "Jeffreys" ] == 1)
+
+# extract k, which is the numeric part of the group variable
+rsp$k = as.numeric( str_extract(rsp$group, "\\d+") )
+
+View(rsp %>% select(method, Mhat, MLo, MHi, MhatTestReject, CI_ratio))
 
 
 setwd(results.dir)
 fwrite(rsp, "insomnia_forest_results.csv")
 
 
-# sanity check: do REML estimates agree with published forest plots?
-# close, but not exact
-rsp %>% filter( method == "REML" ) %>%
-  select( group, Mhat, MLo, MHi )
-
-# maybe they used DL instead?
-rsp %>% filter( method == "DL" ) %>%
-  select( group, Mhat, MLo, MHi )
-
-
-
 
 # FOREST PLOT ----------------------------------------------------
 
 # set y-axis order
+unique(rsp$group)
 correct.order = c( "SOL; posttreatment (k = 16)",
                    "SOL; early follow-up (k = 4)",
                    "SOL; late follow-up (k = 3)",
@@ -237,75 +243,152 @@ correct.order = c( "SOL; posttreatment (k = 16)",
                    "TST; early follow-up (k = 4)",
                    "TST; late follow-up (k = 4)",
                    
-                   "SE%; posttreatment (k = 16)",
-                   "SE%; early follow-up (k = 4)",
+                   "SE%; posttreatment (k = 17)",
+                   "SE%; early follow-up (k = 5)",
                    "SE%; late follow-up (k = 4)" )
   
 rsp$group = factor( rsp$group, levels = rev(correct.order) )
 levels(rsp$group)
 
+# reorder methods
+correct.order = c("DL", "REML", "Jeffreys")
+rsp$method = factor(rsp$method, levels = correct.order)
+levels(rsp$method)
+
+# same colors as in analyze_sims_helper.R / prior_plot_one_k for prettiness
+
+.colors = c("#0E96F0",
+              "#0F5A8C",
+              "#F2340E")
 
 
-.colors = c("orange", "black")
+# find good x-axis limits
+min(rsp$MLo)
+max(rsp$MHi)
+xmin = -100
+xmax = 80
 
 p = ggplot( data = rsp,
-            aes( x = group,
-                 y = Mhat, 
-                 ymin = MLo, 
-                 ymax = MHi,
+            aes( y = group,
+                 x = Mhat, 
+                 xmin = MLo, 
+                 xmax = MHi,
                  color = method) ) +
   
   # reference line at null
-  geom_hline(yintercept = 0,
+  geom_vline(xintercept = 0,
              lwd = .8,
              color = "gray") +
   
   
-  geom_errorbar( aes(ymax = MHi,
-                      ymin = MLo),
-                  width = 0,
-                  lwd = 0.8,
-                  position = position_dodge(width = 0.5) ) +
+  geom_errorbarh( aes(xmax = MHi,
+                     xmin = MLo),
+                 height = 0,
+                 lwd = 0.8,
+                 position = position_dodge(width = 0.5) ) +
   
-
+  
   geom_point(size=3,
              position=position_dodge(width = 0.5) ) +
   
   # manually provided colors
-  scale_colour_manual(values = .colors ) +
-  
-
-  scale_x_discrete( name = "Subset" ) +
-  #scale_y_continuous(name="Odds ratio", limits = c(0.5, 5)) +
-  coord_flip() +
+  scale_colour_manual(values = .colors,
+                      guide = guide_legend(reverse = TRUE)) +
   
   
-  ylab( "Pooled estimate with 95% CI" ) +
-
+  scale_y_discrete( name = "Study subset (outcome; follow-up duration)" ) +
+  scale_x_continuous( limits = c(xmin - 2, xmax + 2),
+                      breaks = seq(xmin, xmax, 20) ) +
+  
+  
+  xlab( "Pooled estimate with 95% CI" ) +
+  
   labs(color  = "Method") +
-
   
-  theme_bw() +
+  
+  theme_bw(base_size = 16) +
   
   theme( text = element_text(face = "bold"),
-         panel.grid.major.y = element_blank(),
-         panel.grid.minor.y = element_blank(),
+         axis.title = element_text(size=20),
+         panel.grid.major.x = element_blank(),
+         panel.grid.minor.x = element_blank(),
          legend.position = "bottom" )
-
 
 p
 
 
-#bm: make sure REML results all agree with the original paper
-# also work on plot order :)
-# report: For what percent of metas < 10 studies was Jeffreys more precise? and for what percent of larger ones?
-# look into how I could report p-values
+
+my_ggsave(name = "insomnia_forest.pdf",
+          .plot = p,
+          .width = 10,
+          .height = 13,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
+
+
+# ONE-OFF STATS FOR PAPER  -------------------------------------------------
 
 
 
 
+# CI width comparisons
+#@definitely check these and the underlying CI_ratio calculation
+update_result_csv( name = "Mean perc narrower Jeffreys vs winning other method",
+                   value = round( 100 * ( mean(rsp$CI_ratio) - 1 ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean perc narrower Jeffreys vs winning other method - small metas",
+                   value = round( 100 * ( mean(rsp$CI_ratio[ rsp$k <= 5] ) - 1 ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean perc wider Jeffreys vs winning other method - larger metas",
+                   value = round( 100 * ( mean( 1 / rsp$CI_ratio[ rsp$k > 5] ) - 1 ) ),
+                   print = TRUE )
+
+# MhatTestReject comparisons
+update_result_csv( name = "Mean MhatTestReject Jeffreys",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "Jeffreys"] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject REML",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "REML"] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject DL",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "DL"] ) ),
+                   print = TRUE )
 
 
+
+update_result_csv( name = "Mean MhatTestReject Jeffreys - small metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "Jeffreys" & rsp$k <= 5] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject REML - small metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "REML" & rsp$k <= 5] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject DL - small metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "DL"& rsp$k <= 5] ) ),
+                   print = TRUE )
+
+
+update_result_csv( name = "Mean MhatTestReject Jeffreys - larger metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "Jeffreys" & rsp$k > 5] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject REML - larger metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "REML" & rsp$k > 5] ) ),
+                   print = TRUE )
+
+update_result_csv( name = "Mean MhatTestReject DL - larger metas",
+                   value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "DL"& rsp$k > 5] ) ),
+                   print = TRUE )
+
+# # basic info about meta-analysis
+# update_result_csv( name = "Insomnia meta k",
+#                    value = nrow(d),
+#                    print = TRUE )
 
 
 
