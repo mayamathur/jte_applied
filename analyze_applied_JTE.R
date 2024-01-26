@@ -59,7 +59,7 @@ overwrite.res = TRUE
 
 # should analyses be run from scratch?
 # FALSE if just redoing plots
-rerun.analyses = FALSE
+rerun.analyses = TRUE
 
 
 # ~~ Set directories -------------------------
@@ -111,11 +111,14 @@ if ( rerun.analyses == TRUE ) {
   # fit Jeffreys, DL, and REML for each group (i.e., section in their forest plot)
   for ( .group in unique(d$group) ) {
     
+    # test only
+    #.group = "SOL; early follow-up (k = 4)"
+    
     .dat = d %>% filter(group==.group)
     
     rep.res = data.frame()
     
-    
+    ### DL
     rep.res = run_method_safe(method.label = c("DL"),
                               method.fn = function() {
                                 mod = rma( yi = .dat$yi,
@@ -130,6 +133,7 @@ if ( rerun.analyses == TRUE ) {
     
     srr(rep.res)
     
+    ### REML
     rep.res = run_method_safe(method.label = c("REML"),
                               method.fn = function() {
                                 mod = rma( yi = .dat$yi,
@@ -144,9 +148,43 @@ if ( rerun.analyses == TRUE ) {
     
     srr(rep.res)
     
+    ### MLE + profile interval
     
     
-    ## Jeffreys
+    rep.res = run_method_safe(method.label = c("MLE-profile"),
+                              method.fn = function() {
+                                
+                                
+                                nll_fun <- function(mu, tau) get_nll(mu, tau, .dat$yi, .dat$sei)
+                                my_mle = stats4::mle(minuslogl = nll_fun,
+                                                     start = list(mu = 0, tau = 0.1) )
+                                
+                                cis = stats4::confint(my_mle)
+                                
+                                return( list( stats = data.frame( 
+                                  
+                                  Mhat = as.numeric( attr(my_mle, "coef")["mu"] ),
+                                  Shat = as.numeric( attr(my_mle, "coef")["tau"] ),
+                                  
+                                  MhatSE = NA,
+                                  ShatSE = NA,
+                                  
+                                  MLo = cis["mu", 1],
+                                  MHi = cis["mu", 2],
+                                  
+                                  SLo = cis["tau", 1],
+                                  SHi = cis["tau", 2] ) ) )
+                                
+                              },
+                              .rep.res = rep.res )
+    
+    
+    srr(rep.res)
+
+   
+
+    
+    ### Jeffreys
     rep.res = run_method_safe(method.label = c("jeffreys-pmean",
                                                "jeffreys-pmed",
                                                "jeffreys-max-lp-iterate"),
@@ -206,15 +244,18 @@ if ( rerun.analyses == TRUE ) {
     
     rep.res$group = .group
     
+    # this can happen if there is a failure
+    if ("method.1" %in% names(rep.res)) rep.res = rep.res %>% select(-method.1)
+    
+    
     if ( .group == unique(d$group)[1] ) rs = rep.res else rs = rbind(rs, rep.res)
     
-  }
-  
+} # end loop over .group
   
   # POST-PROCESSING
   
   # remove the extra Jeffreys methods
-  rsp = rs %>% filter(method %in% c("REML", "DL", "Jeffreys") )
+  rsp = rs %>% filter(method %in% c( "MLE-profile", "REML", "DL", "Jeffreys") )
   
   # ratio of CI width of Jeffreys vs. the winner among the other two methods
   rsp = rsp %>% group_by(group) %>%
@@ -235,6 +276,41 @@ if ( rerun.analyses == TRUE ) {
   fwrite(rsp, "insomnia_forest_results.csv")
   
 }
+
+
+} # end "if (rerun.analyses == TRUE)"
+
+
+# DEBUG CONVERGENCE FAILURE FOR MLE  -------------------------------------------------
+
+
+d2 = d %>% filter( group == "TST; early follow-up (k = 4)" )
+
+
+
+mle_params2 <- function(mu_start, tau_start, yi, sei) {
+  nll_fun <- function(mu, tau) get_nll(mu, tau, yi, sei)
+  stats4::mle(minuslogl = nll_fun,
+              start = list(mu = mu_start, tau = tau_start) )
+}
+
+my_mle = mle_params2(mu_start = 0,
+                     tau_start = 0.1, 
+                     yi = d2$yi,
+                     sei = d2$sei)
+# warning that original solution hadn't converged:
+cis = stats4::confint(my_mle) 
+
+
+#
+
+
+
+# sanity check
+rma( yi = d2$yi,
+           vi = d2$vi,
+           method = "ML",
+           knha = FALSE )
 
 
 
@@ -271,15 +347,16 @@ rsp$group = factor( rsp$group, levels = rev(correct.order) )
 levels(rsp$group)
 
 # reorder methods
-correct.order = c("DL", "REML", "Jeffreys")
+correct.order = c("MLE-profile", "DL", "REML", "Jeffreys")
 rsp$method = factor(rsp$method, levels = correct.order)
 levels(rsp$method)
 
 # same colors as in analyze_sims_helper.R / prior_plot_one_k for prettiness
 
-.colors = c("#0E96F0",
-              "#0F5A8C",
-              "#F2340E")
+.colors = c("black",
+            "#0E96F0",
+            "#0F5A8C",
+            "#F2340E")
 
 
 # find good x-axis limits
