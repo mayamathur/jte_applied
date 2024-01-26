@@ -157,7 +157,8 @@ if ( rerun.analyses == TRUE ) {
                                 
                                 nll_fun <- function(mu, tau) get_nll(mu, tau, .dat$yi, .dat$sei)
                                 my_mle = stats4::mle(minuslogl = nll_fun,
-                                                     start = list(mu = 0, tau = 0.1) )
+                                                     start = list(mu = 0, tau = 0.1),
+                                                     method = "L-BFGS-B")
                                 
                                 cis = stats4::confint(my_mle)
                                 
@@ -275,10 +276,9 @@ if ( rerun.analyses == TRUE ) {
   setwd(results.dir)
   fwrite(rsp, "insomnia_forest_results.csv")
   
-}
+}  # end "if (rerun.analyses == TRUE)"
 
 
-} # end "if (rerun.analyses == TRUE)"
 
 
 # DEBUG CONVERGENCE FAILURE FOR MLE  -------------------------------------------------
@@ -291,29 +291,46 @@ d2 = d %>% filter( group == "TST; early follow-up (k = 4)" )
 mle_params2 <- function(mu_start, tau_start, yi, sei) {
   nll_fun <- function(mu, tau) get_nll(mu, tau, yi, sei)
   stats4::mle(minuslogl = nll_fun,
-              start = list(mu = mu_start, tau = tau_start) )
+              start = list(mu = mu_start, tau = tau_start),
+              # using this method because in the single k=4 example below, 
+              #  seems more likely than other methods to converge
+              method = "L-BFGS-B")
 }
 
 my_mle = mle_params2(mu_start = 0,
                      tau_start = 0.1, 
                      yi = d2$yi,
                      sei = d2$sei)
+my_mle
 # warning that original solution hadn't converged:
 cis = stats4::confint(my_mle) 
 
 
-#
+od = get_optimx_dataframe(.yi = d2$yi, 
+                          .sei = d2$sei,
+                          .mu.start = 0,
+                          .tau.start = 0.1)
 
+
+# which method won?
+od2 = od %>% select( all_of( namesWith(dat = od, pattern = "nll") ) )
+min(od2)
 
 
 # sanity check
-rma( yi = d2$yi,
+mod = rma( yi = d2$yi,
            vi = d2$vi,
            method = "ML",
            knha = FALSE )
 
+# can we just use metafor?
+# no: it won't profile mu
+# https://wviechtb.github.io/metafor/reference/profile.rma.html
+# some underlying fns: https://github.com/cran/metafor/blob/master/R/profile.rma.uni.r
+x = profile(mod)
 
-
+x2 = data.frame( x$ci.lb, x$ci.ub, )
+x$ci.lb
 
 
 # FOREST PLOT ----------------------------------------------------
