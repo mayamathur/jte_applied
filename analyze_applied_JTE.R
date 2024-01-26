@@ -57,6 +57,10 @@ options(scipen=999)
 # but note that not all fns respect this setting
 overwrite.res = TRUE
 
+# should analyses be run from scratch?
+# FALSE if just redoing plots
+rerun.analyses = FALSE
+
 
 # ~~ Set directories -------------------------
 
@@ -86,7 +90,7 @@ overleaf.dir.stats = "/Users/mmathur/Dropbox/Apps/Overleaf/JTE (Jeffreys tau est
 setwd(code.dir)
 source("analyze_sims_helper_JTE.R")
 source("helper_JTE.R")  # for lprior(), etc.
-source("init_stan_model_JTE.R")
+
 
 
 # READ PREPPED DATA ----------------------------------------------------
@@ -97,137 +101,153 @@ d = fread("data_insomnia.csv")
 
 # ANALYZE EACH SUBSET ----------------------------------------------------
 
-if (exists("rs")) rm(rs)
-
-# fit Jeffreys, DL, and REML for each group (i.e., section in their forest plot)
-for ( .group in unique(d$group) ) {
+if ( rerun.analyses == TRUE ) {
   
-  .dat = d %>% filter(group==.group)
+  setwd(code.dir)
+  source("init_stan_model_JTE.R")
   
-  rep.res = data.frame()
+  if (exists("rs")) rm(rs)
   
-  
-  rep.res = run_method_safe(method.label = c("DL"),
-                            method.fn = function() {
-                              mod = rma( yi = .dat$yi,
-                                         vi = .dat$vi,
-                                         method = "DL",
-                                         knha = TRUE )
-                              
-                              report_meta(mod, .mod.type = "rma")
-                            },
-                            .rep.res = rep.res )
-  
-  
-  srr(rep.res)
-  
-  rep.res = run_method_safe(method.label = c("REML"),
-                            method.fn = function() {
-                              mod = rma( yi = .dat$yi,
-                                         vi = .dat$vi,
-                                         method = "REML",
-                                         knha = TRUE )
-                              
-                              report_meta(mod, .mod.type = "rma")
-                            },
-                            .rep.res = rep.res )
-  
-  
-  srr(rep.res)
-  
-  
-  
-  ## Jeffreys
-  rep.res = run_method_safe(method.label = c("jeffreys-pmean",
-                                             "jeffreys-pmed",
-                                             "jeffreys-max-lp-iterate"),
-                            method.fn = function() estimate_jeffreys(.yi = as.numeric(.dat$yi),
-                                                                     .sei = .dat$sei,
-                                                                     
-                                                                     .Mu.start = 0,
-                                                                     # can't handle start value of 0:
-                                                                     .Tt.start = 0.2,
-                                                                     .stan.adapt_delta = 0.995,
-                                                                     .stan.maxtreedepth = 25), .rep.res = rep.res )
-  
-  
-  # start values for finding posterior mode analytically
-  maxlp = rep.res[ rep.res$method == "jeffreys-max-lp-iterate", ]
-  Mhat.MaxLP = maxlp$Mhat
-  Shat.MaxLP = maxlp$Shat
-  
-  srr(rep.res)
-  
-  
-  
-  # find posterior mode analytically
-  rep.res = run_method_safe(method.label = c("Jeffreys"),
-                            method.fn = function() {
-                              
-                              # as in the future pkg
-                              mle_fit <- mle_params(Mhat.MaxLP, Shat.MaxLP, .dat$yi, .dat$sei)
-                              modes <- c(mle_fit@coef[["mu"]], mle_fit@coef[["tau"]])
-                              optim_converged <- mle_fit@details$convergence == 0
-                              
-                              
-                              return( list( stats = data.frame( 
+  # fit Jeffreys, DL, and REML for each group (i.e., section in their forest plot)
+  for ( .group in unique(d$group) ) {
+    
+    .dat = d %>% filter(group==.group)
+    
+    rep.res = data.frame()
+    
+    
+    rep.res = run_method_safe(method.label = c("DL"),
+                              method.fn = function() {
+                                mod = rma( yi = .dat$yi,
+                                           vi = .dat$vi,
+                                           method = "DL",
+                                           knha = TRUE )
                                 
-                                Mhat = modes[1],
-                                Shat = modes[2],
+                                report_meta(mod, .mod.type = "rma")
+                              },
+                              .rep.res = rep.res )
+    
+    
+    srr(rep.res)
+    
+    rep.res = run_method_safe(method.label = c("REML"),
+                              method.fn = function() {
+                                mod = rma( yi = .dat$yi,
+                                           vi = .dat$vi,
+                                           method = "REML",
+                                           knha = TRUE )
                                 
-                                # all inference is again from MCMC
-                                MhatSE = maxlp$MhatSE,
-                                ShatSE = maxlp$ShatSE,
-                                MLo = maxlp$MLo,
-                                MHi =maxlp$MHi,
-                                SLo = maxlp$SLo,
-                                SHi = maxlp$SHi,
+                                report_meta(mod, .mod.type = "rma")
+                              },
+                              .rep.res = rep.res )
+    
+    
+    srr(rep.res)
+    
+    
+    
+    ## Jeffreys
+    rep.res = run_method_safe(method.label = c("jeffreys-pmean",
+                                               "jeffreys-pmed",
+                                               "jeffreys-max-lp-iterate"),
+                              method.fn = function() estimate_jeffreys(.yi = as.numeric(.dat$yi),
+                                                                       .sei = .dat$sei,
+                                                                       
+                                                                       .Mu.start = 0,
+                                                                       # can't handle start value of 0:
+                                                                       .Tt.start = 0.2,
+                                                                       .stan.adapt_delta = 0.995,
+                                                                       .stan.maxtreedepth = 25), .rep.res = rep.res )
+    
+    
+    # start values for finding posterior mode analytically
+    maxlp = rep.res[ rep.res$method == "jeffreys-max-lp-iterate", ]
+    Mhat.MaxLP = maxlp$Mhat
+    Shat.MaxLP = maxlp$Shat
+    
+    srr(rep.res)
+    
+    
+    
+    # find posterior mode analytically
+    rep.res = run_method_safe(method.label = c("Jeffreys"),
+                              method.fn = function() {
                                 
-                                stan.warned = maxlp$stan.warned,
-                                stan.warning = maxlp$stan.warning,
-                                MhatRhat = maxlp$MhatRhat,
-                                ShatRhat = maxlp$ShatRhat,
+                                # as in the future pkg
+                                mle_fit <- mle_params(Mhat.MaxLP, Shat.MaxLP, .dat$yi, .dat$sei)
+                                modes <- c(mle_fit@coef[["mu"]], mle_fit@coef[["tau"]])
+                                optim_converged <- mle_fit@details$convergence == 0
                                 
-                                OptimConverged = optim_converged) ) )
-                              
-                            }, .rep.res = rep.res )
+                                
+                                return( list( stats = data.frame( 
+                                  
+                                  Mhat = modes[1],
+                                  Shat = modes[2],
+                                  
+                                  # all inference is again from MCMC
+                                  MhatSE = maxlp$MhatSE,
+                                  ShatSE = maxlp$ShatSE,
+                                  MLo = maxlp$MLo,
+                                  MHi =maxlp$MHi,
+                                  SLo = maxlp$SLo,
+                                  SHi = maxlp$SHi,
+                                  
+                                  stan.warned = maxlp$stan.warned,
+                                  stan.warning = maxlp$stan.warning,
+                                  MhatRhat = maxlp$MhatRhat,
+                                  ShatRhat = maxlp$ShatRhat,
+                                  
+                                  OptimConverged = optim_converged) ) )
+                                
+                              }, .rep.res = rep.res )
+    
+    
+    srr(rep.res)
+    
+    rep.res$group = .group
+    
+    if ( .group == unique(d$group)[1] ) rs = rep.res else rs = rbind(rs, rep.res)
+    
+  }
   
   
-  srr(rep.res)
+  # POST-PROCESSING
   
-  rep.res$group = .group
+  # remove the extra Jeffreys methods
+  rsp = rs %>% filter(method %in% c("REML", "DL", "Jeffreys") )
   
-  if ( .group == unique(d$group)[1] ) rs = rep.res else rs = rbind(rs, rep.res)
+  # ratio of CI width of Jeffreys vs. the winner among the other two methods
+  rsp = rsp %>% group_by(group) %>%
+    mutate( MhatWidth = MHi - MLo, 
+            MhatTestReject = sign(MHi) == sign(MLo),
+            CI_ratio = min( MhatWidth[ method != "Jeffreys" ] ) / MhatWidth[ method == "Jeffreys" ] )
+  
+  # OnlyJeffreysRejects = MhatTestReject[ method != "Jeffreys" ] == 0 &
+  #   MhatTestReject[ method == "Jeffreys" ] == 1)
+  
+  # extract k, which is the numeric part of the group variable
+  rsp$k = as.numeric( str_extract(rsp$group, "\\d+") )
+  
+  View(rsp %>% select(method, Mhat, MLo, MHi, MhatTestReject, CI_ratio))
+  
+  
+  setwd(results.dir)
+  fwrite(rsp, "insomnia_forest_results.csv")
   
 }
 
 
-# POST-PROCESSING
-
-# remove the extra Jeffreys methods
-rsp = rs %>% filter(method %in% c("REML", "DL", "Jeffreys") )
-
-# ratio of CI width of Jeffreys vs. the winner among the other two methods
-rsp = rsp %>% group_by(group) %>%
-  mutate( MhatWidth = MHi - MLo, 
-          MhatTestReject = sign(MHi) == sign(MLo),
-          CI_ratio = min( MhatWidth[ method != "Jeffreys" ] ) / MhatWidth[ method == "Jeffreys" ] )
-
-          # OnlyJeffreysRejects = MhatTestReject[ method != "Jeffreys" ] == 0 &
-          #   MhatTestReject[ method == "Jeffreys" ] == 1)
-
-# extract k, which is the numeric part of the group variable
-rsp$k = as.numeric( str_extract(rsp$group, "\\d+") )
-
-View(rsp %>% select(method, Mhat, MLo, MHi, MhatTestReject, CI_ratio))
-
-
-setwd(results.dir)
-fwrite(rsp, "insomnia_forest_results.csv")
 
 
 
 # FOREST PLOT ----------------------------------------------------
+
+# retrieve existing analysis results
+if ( rerun.analyses == FALSE ) {
+  setwd(results.dir)
+  rsp = fread("insomnia_forest_results.csv")
+}
+
 
 # set y-axis order
 unique(rsp$group)
@@ -329,7 +349,11 @@ my_ggsave(name = "insomnia_forest.pdf",
 # ONE-OFF STATS FOR PAPER  -------------------------------------------------
 
 
-
+# retrieve existing analysis results
+if ( rerun.analyses == FALSE ) {
+  setwd(results.dir)
+  rsp = fread("insomnia_forest_results.csv")
+}
 
 # CI width comparisons
 #@definitely check these and the underlying CI_ratio calculation
@@ -389,6 +413,10 @@ update_result_csv( name = "Mean MhatTestReject DL - larger metas",
 # update_result_csv( name = "Insomnia meta k",
 #                    value = nrow(d),
 #                    print = TRUE )
+
+
+
+
 
 
 
