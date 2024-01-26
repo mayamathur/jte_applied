@@ -11,3 +11,5 @@ Mean MhatTestReject REML - small metas,0,NA
 Mean MhatTestReject DL - larger metas,75,NA
 Mean MhatTestReject Jeffreys - larger metas,75,NA
 Mean MhatTestReject REML - larger metas,75,NA
+Max MhatRhat - applied,1.02304701761419,NA
+Max ShatRhat - applied,1.00557184800521,NA

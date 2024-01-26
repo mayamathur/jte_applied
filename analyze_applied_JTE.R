@@ -355,7 +355,7 @@ if ( rerun.analyses == FALSE ) {
   rsp = fread("insomnia_forest_results.csv")
 }
 
-# CI width comparisons
+# ~ CI width comparisons  -------------------------------------------------
 #@definitely check these and the underlying CI_ratio calculation
 update_result_csv( name = "Mean perc narrower Jeffreys vs winning other method",
                    value = round( 100 * ( mean(rsp$CI_ratio) - 1 ) ),
@@ -369,7 +369,7 @@ update_result_csv( name = "Mean perc wider Jeffreys vs winning other method - la
                    value = round( 100 * ( mean( 1 / rsp$CI_ratio[ rsp$k > 5] ) - 1 ) ),
                    print = TRUE )
 
-# MhatTestReject comparisons
+# ~ MhatTestReject comparisons -------------------------------------------------
 update_result_csv( name = "Mean MhatTestReject Jeffreys",
                    value = round( 100 * mean( rsp$MhatTestReject[ rsp$method == "Jeffreys"] ) ),
                    print = TRUE )
@@ -415,8 +415,15 @@ update_result_csv( name = "Mean MhatTestReject DL - larger metas",
 #                    print = TRUE )
 
 
+# ~ Rhat's -------------------------------------------------
 
+update_result_csv( name = "Max MhatRhat - applied",
+                   value = max( rsp$MhatRhat[ rsp$method == "Jeffreys"] ),
+                   print = TRUE )
 
+update_result_csv( name = "Max ShatRhat - applied",
+                   value = max( rsp$ShatRhat[ rsp$method == "Jeffreys"] ),
+                   print = TRUE )
 
 
 
