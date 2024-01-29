@@ -149,8 +149,6 @@ if ( rerun.analyses == TRUE ) {
     srr(rep.res)
     
     ### MLE + profile interval
-    
-    
     rep.res = run_method_safe(method.label = c("MLE-profile"),
                               method.fn = function() {
                                 
@@ -160,6 +158,8 @@ if ( rerun.analyses == TRUE ) {
                                                      start = list(mu = 0, tau = 0.1),
                                                      method = "L-BFGS-B")
                                 
+                                # this fn will complain if optimizer in my_mle hasn't found the true max
+                                #  which is a good thing
                                 cis = stats4::confint(my_mle)
                                 
                                 return( list( stats = data.frame( 
@@ -281,12 +281,13 @@ if ( rerun.analyses == TRUE ) {
 
 
 
-# DEBUG CONVERGENCE FAILURE FOR MLE  -------------------------------------------------
+# EXPLORE OTHER METHODS  -------------------------------------------------
+
+.group = "TST; early follow-up (k = 4)"
+d2 = d %>% filter( group == .group )
 
 
-d2 = d %>% filter( group == "TST; early follow-up (k = 4)" )
-
-
+# ~ MLE-profile  -------------------------------------------------
 
 mle_params2 <- function(mu_start, tau_start, yi, sei) {
   nll_fun <- function(mu, tau) get_nll(mu, tau, yi, sei)
@@ -317,20 +318,110 @@ od2 = od %>% select( all_of( namesWith(dat = od, pattern = "nll") ) )
 min(od2)
 
 
-# sanity check
-mod = rma( yi = d2$yi,
-           vi = d2$vi,
-           method = "ML",
-           knha = FALSE )
+### Try with metaLik package
+library(metaLik)
+mod2 = metaLik( yi ~ 1,
+                data = d2,
+                sigma2 = vi)
+
+summ = summary(mod2)
+
+confint( summary(mod2) )
+inf = test.metaLik(mod2, param=1)
+
+# try their example meta-analysis
+data(education)
+m <- metaLik(y~1, data=education, sigma2=sigma2)
+summary(m)
+confint(m)
+test.metaLik(m, param=1)
+
+profile(m)
+
+#bm: how did the Annals authors get CIs from this package??
+
+
+
+
+### Why does my MLE-profile not agree with metafor for tau specifically?
+# is it because of REML vs. ML?
 
 # can we just use metafor?
 # no: it won't profile mu
 # https://wviechtb.github.io/metafor/reference/profile.rma.html
 # some underlying fns: https://github.com/cran/metafor/blob/master/R/profile.rma.uni.r
-x = profile(mod)
+# uses Q-profile intervals
+# from here (https://wviechtb.github.io/metafor/reference/confint.rma.html):
+# For objects of class "rma.uni" obtained with the rma.uni function, a confidence interval for the amount of (residual) heterogeneity (i.e., 𝜏2
+# ) can be obtained by setting random=TRUE (which is the default). The interval is obtained iteratively either via the Q-profile method or via the generalized Q-statistic method (Hartung and Knapp, 2005; Viechtbauer, 2007; Jackson, 2013; Jackson et al., 2014). The latter is automatically used when the model was fitted with method="GENQ" or method="GENQM", the former is used in all other cases.
+#**this DOES change if original model is fit using REML
+mod = rma( yi = d2$yi,
+           vi = d2$vi,
+           method = "ML",
+           knha = FALSE )
+( x = confint(mod) )
+( tau.lb = x$random["tau","ci.lb"] )
+( tau.ub = x$random["tau","ci.ub"] )
+data.frame( tau.lb, tau.ub )
 
-x2 = data.frame( x$ci.lb, x$ci.ub, )
-x$ci.lb
+
+# my profile CI, as in doParallel
+nll_fun <- function(mu, tau) get_nll(mu, tau, d2$yi, d2$sei)
+my_mle = stats4::mle(minuslogl = nll_fun,
+                     start = list(mu = 0, tau = 0.1),
+                     method = "L-BFGS-B")
+
+# this fn will complain if optimizer in my_mle hasn't found the true max
+#  which is a good thing
+cis = stats4::confint(my_mle)
+cis
+#??? why is the CI for tau symmetric around 0? doesn't make sense.
+
+prof = stats4::profile(my_mle) 
+plot( prof )
+
+
+x = as.data.frame( attr(prof, "profile")$tau )
+# okay, so the issue is just that it's trying to profile values of tau that are <0
+plot( x$par.vals[, "tau"],
+      x$z )
+
+
+
+# ~ Exact -------------------------------------------------
+
+### try rma.exact
+library(rma.exact)
+rma.exact(yi = d2$yi,
+          vi = d2$vi)
+
+# ~ bayesmeta  -------------------------------------------------
+
+### Bayesmeta with Jeffreys prior on tau alone
+library(bayesmeta)
+
+# sanity check: should match MLE
+#  because when mu.prior isn't specified, defaults to uniform
+# yes, matches :)
+m = bayesmeta(y = d2$yi,
+              sigma = d2$sei,
+              tau.prior = "uniform")
+
+m = bayesmeta(y = d2$yi,
+              sigma = d2$sei,
+              tau.prior = "Jeffreys")
+m
+m$MAP["joint", "mu"]
+as.numeric( m$post.interval(tau.level=0.95) )
+
+m$post.interval(mu.level=0.95)
+m$post.interval(mu.level=0.95, method = "central")
+
+
+
+# ~ Compare to other methods  -------------------------------------------------
+
+rs %>% filter(group == .group)
 
 
 # FOREST PLOT ----------------------------------------------------
