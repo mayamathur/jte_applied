@@ -13,3 +13,5 @@ Mean MhatTestReject Jeffreys - larger metas,75,NA
 Mean MhatTestReject REML - larger metas,75,NA
 Max MhatRhat - applied,1.02304701761419,NA
 Max ShatRhat - applied,1.00557184800521,NA
+Mean perc narrower Jeffreys2 vs winning other method,44,NA
+Mean perc narrower Jeffreys2 vs winning other method k=2,112,NA

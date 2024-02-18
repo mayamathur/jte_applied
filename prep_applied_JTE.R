@@ -86,7 +86,6 @@ d = scrape_meta(type = "RR", est = yi, hi = hi)
 d$group = group
 
 
-# bm: this part can be done at the end (after entering each group )
 # sanity check vs. their results
 for ( .g in unique(d$group) ) {
   cat("\n\n        ******* GROUP", .g)
@@ -98,7 +97,12 @@ for ( .g in unique(d$group) ) {
   m = rma( yi = .dat$yi, vi = .dat$vyi,
            method = "DL", knha = FALSE )
   
-  cat("\n RR = ", round( exp(m$beta), 3), ", hi = ", round( exp(m$ci.ub), 3) )
+  cat("\n Without KNHA: RR = ", round( exp(m$beta), 3), ", hi = ", round( exp(m$ci.ub), 3) )
+  
+  m = rma( yi = .dat$yi, vi = .dat$vyi,
+           method = "DL", knha = TRUE )
+  
+  cat("\n With KNHA: RR = ", round( exp(m$beta), 3), ", hi = ", round( exp(m$ci.ub), 3) )
   
   cat("\n\n")
 }
