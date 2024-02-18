@@ -366,7 +366,7 @@ plot = ggplot( data = dp2,
   scale_color_manual(values = my.colors, 
                      name = "") +
   
-  theme_bw(base_size = 16) +
+  theme_bw(base_size = 20) +
   #ggtitle( paste("k = ", .k) ) +
   
   theme(text = element_text(face = "bold"),
@@ -376,6 +376,14 @@ plot = ggplot( data = dp2,
         axis.ticks.y=element_blank() )
 
 plot
+
+
+my_ggsave(name = "zito_all_cause_death_priors.pdf",
+          .plot = plot,
+          .width = 10,
+          .height = 8,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
 
 
 # ~ bayesmeta sanity check  -------------------------------------------------
