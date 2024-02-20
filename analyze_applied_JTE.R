@@ -30,6 +30,7 @@ toLoad = c("crayon",
            "phacking",
            "here",
            "stringr",
+           "bayesmeta",
            "rma.exact")  
 
 # to install everything
@@ -183,7 +184,8 @@ if ( rerun.analyses == TRUE ) {
                               method.fn = function() {
                                 
                                 ci = rma.exact.fast( yi = .dat$yi,
-                                                     vi = .dat$vi )
+                                                     vi = .dat$vi,
+                                                     plot = FALSE )
                                 
                                 # this method doesn't do point estimation of inference for tau
                                 return( list( stats = data.frame( 
@@ -296,14 +298,97 @@ if ( rerun.analyses == TRUE ) {
 }  # end "if (rerun.analyses == TRUE)"
 
 
-# PLOT BOTH PRIORS  -------------------------------------------------
+# PRIOR AND POST PLOTS FOR ONE META-ANALYSIS  -------------------------------------------------
 
 # pick one subset meta-analysis
 .group = "All-cause death (k = 3)"
 .dat = d %>% filter(group == .group)
 
 
-# ~ Make plotting dataframe  -------------------------------------------------
+# ~ Plot posteriors  -------------------------------------------------
+
+m1 = bayesmeta(y = .dat$yi,
+               sigma = .dat$sei,
+               tau.prior = "Jeffreys",
+               interval.type = "central")
+
+plot(m1)
+
+
+m2 = bayesmeta(y = .dat$yi,
+               sigma = .dat$sei,
+               tau.prior = "overallJeffreys",
+               interval.type = "central")
+
+plot(m2)
+
+
+
+m2$dposterior(mu= 0, tau = .1)
+
+mu_vec = seq( -4, 4, 0.01 )
+tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 1, 0.05) )
+
+
+dp = expand_grid( mu = mu_vec,
+                  tau = tau_vec )
+nrow(dp)
+
+dp = dp %>% rowwise() %>%
+  mutate( joint_post = m2$dposterior(mu = mu, tau = tau),
+          mu_post = m2$dposterior(mu = mu),
+          tau_post = m2$dposterior(tau = tau) )
+
+
+
+### Posterior plot
+p = ggplot(data = dp,
+           aes(x = mu,
+               y = tau,
+               z = joint_post)) +
+  
+  # posterior mode for mu and 95% CI
+  geom_vline(xintercept = m2$MAP["marginal", "mu"], lty = 2, color = "red") +
+  # geom_vline(xintercept = m2$summary["95% lower", "mu"], lty = 2, color = "red") +
+  # geom_vline(xintercept = m2$summary["95% upper", "mu"], lty = 2, color = "red") +
+  
+  # posterior mode for tau and 95% CI
+  geom_hline(yintercept = m2$MAP["marginal", "tau"], lty = 2, color = "blue") +
+  # geom_hline(yintercept = m2$summary["95% lower", "tau"], lty = 2, color = "blue") +
+  # geom_hline(yintercept = m2$summary["95% upper", "tau"], lty = 2, color = "blue") +
+  
+  geom_contour(color = "black") +
+  
+  xlab( bquote( p(mu ~ hat(theta) ) ) +
+  ylab( bquote( p(tau ~ hat(theta) ) ) ) +
+  
+  
+  theme_bw(base_size = 20) +
+
+  
+  theme(text = element_text(face = "bold"),
+        axis.title = element_text(size=20),
+        legend.position = "bottom",
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )
+
+
+
+
+my_ggsave(name = "zito_all_cause_death_priors.pdf",
+          .plot = plot,
+          .width = 10,
+          .height = 8,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
+
+
+p
+
+
+
+
+# ~ Plot priors: Make plotting dataframe  -------------------------------------------------
 
 # similar to plot_prior_one_k:
 
