@@ -1,9 +1,7 @@
-# NOTES ----------------------------------------------------
-
 
 # PRELIMINARIES ----------------------------------------------------
 
-#rm(list=ls())
+# rm(list=ls())
 
 # This script uses renv to preserve the R environment specs (e.g., package versions.)
 library(renv)
@@ -91,7 +89,7 @@ overleaf.dir.stats = "/Users/mmathur/Dropbox/Apps/Overleaf/JTE (Jeffreys tau est
 setwd(code.dir)
 source("analyze_sims_helper_JTE.R")
 source("helper_JTE.R")  # for lprior(), etc.
-source("bayesmeta_edited.R")
+
 
 
 # READ PREPPED DATA ----------------------------------------------------
@@ -117,7 +115,7 @@ if ( rerun.analyses == TRUE ) {
     rep.res = data.frame()
     
     ### DL
-    rep.res = run_method_safe(method.label = c("DL-Wald"),
+    rep.res = run_method_safe(method.label = c("DL-HKSJ"),
                               method.fn = function() {
                                 mod = rma( yi = .dat$yi,
                                            vi = .dat$vi,
@@ -132,7 +130,7 @@ if ( rerun.analyses == TRUE ) {
     srr(rep.res)
     
     ### REML
-    rep.res = run_method_safe(method.label = c("REML-Wald"),
+    rep.res = run_method_safe(method.label = c("REML-HKSJ"),
                               method.fn = function() {
                                 mod = rma( yi = .dat$yi,
                                            vi = .dat$vi,
@@ -201,9 +199,9 @@ if ( rerun.analyses == TRUE ) {
     rep.res = run_method_safe(method.label = c("Jeffreys1"),
                               method.fn = function() {
                                 
-                                m = mybayesmeta(y = .dat$yi,
+                                m = bayesmeta(y = .dat$yi,
                                                 sigma = .dat$sei,
-                                                tau.prior = "jeffreys",
+                                                tau.prior = "Jeffreys",
                                                 interval.type = "central")
                                 
                                 # sanity check: plot posterior and prior
@@ -216,8 +214,8 @@ if ( rerun.analyses == TRUE ) {
                                 
                                 # this method doesn't do point estimation of inference for tau
                                 return( list( stats = data.frame( 
-                                  Mhat = m$MAP["joint", "mu"],
-                                  Shat = m$MAP["joint", "tau"],
+                                  Mhat = m$MAP["marginal", "mu"],
+                                  Shat = m$MAP["marginal", "tau"],
                                   MLo = mu_ci[1],
                                   MHi = mu_ci[2],
                                   SLo = tau_ci[1],
@@ -232,9 +230,9 @@ if ( rerun.analyses == TRUE ) {
     rep.res = run_method_safe(method.label = c("Jeffreys2"),
                               method.fn = function() {
                                 
-                                m = mybayesmeta(y = .dat$yi,
+                                m = bayesmeta(y = .dat$yi,
                                                 sigma = .dat$sei,
-                                                tau.prior = "Jeffreys2",
+                                                tau.prior = "overallJeffreys",
                                                 interval.type = "central")
                                 
                                 # sanity check: plot posterior and prior
@@ -247,8 +245,8 @@ if ( rerun.analyses == TRUE ) {
                                 
                                 # this method doesn't do point estimation of inference for tau
                                 return( list( stats = data.frame( 
-                                  Mhat = m$MAP["joint", "mu"],
-                                  Shat = m$MAP["joint", "tau"],
+                                  Mhat = m$MAP["marginal", "mu"],
+                                  Shat = m$MAP["marginal", "tau"],
                                   MLo = mu_ci[1],
                                   MHi = mu_ci[2],
                                   SLo = tau_ci[1],
@@ -500,7 +498,7 @@ rsp$group = factor( rsp$group, levels = rev(correct.order) )
 levels(rsp$group)
 
 # reorder methods
-correct.order = rev( c("DL-Wald", "REML-Wald", "Exact", "Jeffreys1", "Jeffreys2") )
+correct.order = rev( c("DL-HKSJ", "REML-HKSJ", "Exact", "Jeffreys1", "Jeffreys2") )
 rsp$method = factor(rsp$method.pretty, levels = correct.order)
 levels(rsp$method)
 
@@ -606,5 +604,5 @@ update_result_csv( name = "Mean perc narrower Jeffreys2 vs winning other method 
 exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2"])
 exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2"])
 
-exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-Wald"])
-exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-Wald"])
+exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-HKSJ"])
+exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-HKSJ"])
