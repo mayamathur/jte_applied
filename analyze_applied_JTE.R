@@ -343,47 +343,44 @@ dp = dp %>% rowwise() %>%
 
 ### Posterior plot
 p = ggplot(data = dp,
-           aes(x = mu,
-               y = tau,
+           aes(x = tau,
+               y = mu,
                z = joint_post)) +
   
   # posterior mode for mu and 95% CI
-  geom_vline(xintercept = m2$MAP["marginal", "mu"], lty = 2, color = "red") +
+  geom_hline(yintercept = m2$MAP["marginal", "mu"], lty = 2, color = "red") +
   # geom_vline(xintercept = m2$summary["95% lower", "mu"], lty = 2, color = "red") +
   # geom_vline(xintercept = m2$summary["95% upper", "mu"], lty = 2, color = "red") +
   
   # posterior mode for tau and 95% CI
-  geom_hline(yintercept = m2$MAP["marginal", "tau"], lty = 2, color = "blue") +
+  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 2, color = "blue") +
   # geom_hline(yintercept = m2$summary["95% lower", "tau"], lty = 2, color = "blue") +
   # geom_hline(yintercept = m2$summary["95% upper", "tau"], lty = 2, color = "blue") +
   
   geom_contour(color = "black") +
   
-  xlab( bquote( p(mu ~ hat(theta) ) ) +
-  ylab( bquote( p(tau ~ hat(theta) ) ) ) +
+  xlab( bquote( p(tau ~ "|" ~ hat(theta) ) ) ) +
+  ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
+
+  
+  scale_x_continuous( limits = c(0, 0.6), breaks = seq(0, 1, .1) ) +
+  scale_y_continuous( limits = c(-0.9, 0.3), breaks = seq(-1, 1, .1) ) +
   
   
   theme_bw(base_size = 20) +
 
-  
   theme(text = element_text(face = "bold"),
         axis.title = element_text(size=20),
-        legend.position = "bottom",
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank() )
+        legend.position = "bottom" )
+p
 
-
-
-
-my_ggsave(name = "zito_all_cause_death_priors.pdf",
-          .plot = plot,
+my_ggsave(name = "zito_all_cause_death_posterior.pdf",
+          .plot = p,
           .width = 10,
           .height = 8,
           .results.dir = results.dir,
           .overleaf.dir = overleaf.dir.figs)
 
-
-p
 
 
 
