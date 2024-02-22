@@ -307,14 +307,6 @@ if ( rerun.analyses == TRUE ) {
 
 # ~ Plot posteriors  -------------------------------------------------
 
-m1 = bayesmeta(y = .dat$yi,
-               sigma = .dat$sei,
-               tau.prior = "Jeffreys",
-               interval.type = "central")
-
-plot(m1)
-
-
 m2 = bayesmeta(y = .dat$yi,
                sigma = .dat$sei,
                tau.prior = "overallJeffreys",
@@ -327,7 +319,7 @@ plot(m2)
 m2$dposterior(mu= 0, tau = .1)
 
 mu_vec = seq( -4, 4, 0.01 )
-tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 1, 0.05) )
+tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 2.05, 0.05) )
 
 
 dp = expand_grid( mu = mu_vec,
@@ -339,7 +331,7 @@ dp = dp %>% rowwise() %>%
           mu_post = m2$dposterior(mu = mu),
           tau_post = m2$dposterior(tau = tau) )
 
-
+m2$dposterior(mu = .1, individual = TRUE)
 
 ### Posterior plot
 p = ggplot(data = dp,
@@ -375,6 +367,80 @@ p = ggplot(data = dp,
 p
 
 my_ggsave(name = "zito_all_cause_death_posterior.pdf",
+          .plot = p,
+          .width = 10,
+          .height = 8,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
+
+
+### Marginal posterior: mu
+# see Rover (2020), pg 28
+p = ggplot(data = dp,
+           aes(x = mu,
+               y = mu_post)) +
+  
+  # posterior mode for mu and 95% CI
+  geom_vline(xintercept = m2$MAP["marginal", "mu"], lty = 2,  linewidth=1.1, color = "red") +
+  geom_vline(xintercept = m2$summary["95% lower", "mu"], lty = 2, color = "red") +
+  geom_vline(xintercept = m2$summary["95% upper", "mu"], lty = 2, color = "red") +
+  
+  geom_line(linewidth = 1.1) +
+
+  xlab( bquote(mu) ) +
+  ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
+  
+  
+  scale_x_continuous( limits = c(-4, 4), breaks = seq(-4, 4, 1) ) +
+  
+  theme_bw(base_size = 20) +
+  
+  theme(text = element_text(face = "bold"),
+        axis.title = element_text(size=20),
+        legend.position = "bottom",
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )
+p
+
+my_ggsave(name = "zito_all_cause_death_mu_posterior.pdf",
+          .plot = p,
+          .width = 10,
+          .height = 8,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
+
+
+
+### Marginal posterior: tau
+# see Rover (2020), pg 28
+p = ggplot(data = dp,
+           aes(x = tau,
+               y = tau_post)) +
+  
+  # posterior mode for tau and 95% CI
+  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 2, linewidth=1.1, color = "blue") +
+  geom_vline(xintercept = m2$summary["95% lower", "tau"], lty = 2, color = "blue") +
+  geom_vline(xintercept = m2$summary["95% upper", "tau"], lty = 2, color = "blue") +
+
+  geom_line(linewidth = 1.1) +
+  
+  
+  xlab( bquote(mu) ) +
+  ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
+  
+  
+  scale_x_continuous( limits = c(0, 2.2), breaks = seq(0, 2.2, .1) ) +
+  
+  theme_bw(base_size = 20) +
+  
+  theme(text = element_text(face = "bold"),
+        axis.title = element_text(size=20),
+        legend.position = "bottom",
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )
+p
+
+my_ggsave(name = "zito_all_cause_death_tau_posterior.pdf",
           .plot = p,
           .width = 10,
           .height = 8,
@@ -651,7 +717,6 @@ p = ggplot( data = rsp,
          legend.position = "bottom" )
 
 p
-
 
 
 my_ggsave(name = "zito_forest.pdf",
