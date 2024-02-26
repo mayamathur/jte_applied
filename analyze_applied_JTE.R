@@ -198,13 +198,13 @@ if ( rerun.analyses == TRUE ) {
     
     
     ### Jeffreys1-central
-    rep.res = run_method_safe(method.label = c("Jeffreys1"),
+    rep.res = run_method_safe(method.label = c("Jeffreys1-shortest"),
                               method.fn = function() {
                                 
                                 m = bayesmeta(y = .dat$yi,
                                                 sigma = .dat$sei,
                                                 tau.prior = "Jeffreys",
-                                                interval.type = "central")
+                                                interval.type = "shortest")
                                 
                                 # sanity check: plot posterior and prior
                                 # prior is the dashed line
@@ -229,13 +229,13 @@ if ( rerun.analyses == TRUE ) {
     
     
     ### Jeffreys2
-    rep.res = run_method_safe(method.label = c("Jeffreys2"),
+    rep.res = run_method_safe(method.label = c("Jeffreys2-shortest"),
                               method.fn = function() {
                                 
                                 m = bayesmeta(y = .dat$yi,
                                                 sigma = .dat$sei,
                                                 tau.prior = "overallJeffreys",
-                                                interval.type = "central")
+                                                interval.type = "shortest")
                                 
                                 # sanity check: plot posterior and prior
                                 # prior is the dashed line
@@ -281,10 +281,7 @@ if ( rerun.analyses == TRUE ) {
   rsp = rsp %>% group_by(group) %>%
     mutate( MhatWidth = MHi - MLo, 
             MhatTestReject = sign(MHi) == sign(MLo),
-            CI_ratio = min( MhatWidth[ method.pretty != "Jeffreys2" ], na.rm = TRUE ) / MhatWidth[ method.pretty == "Jeffreys2" ] )
-  
-  # OnlyJeffreysRejects = MhatTestReject[ method != "Jeffreys" ] == 0 &
-  #   MhatTestReject[ method == "Jeffreys" ] == 1)
+            CI_ratio = min( MhatWidth[ method.pretty != "Jeffreys2-shortest" ], na.rm = TRUE ) / MhatWidth[ method.pretty == "Jeffreys2-shortest" ] )
   
   # extract k, which is the numeric part of the group variable
   rsp$k = as.numeric( str_extract(rsp$group, "\\d+") )
@@ -296,6 +293,15 @@ if ( rerun.analyses == TRUE ) {
   fwrite(rsp, "zito_forest_results.csv")
   
 }  # end "if (rerun.analyses == TRUE)"
+
+
+# sanity check for CI_ratio calculation
+.group = "All-cause death (k = 3)"
+temp = rsp %>% filter(group == .group)
+temp %>% select(method.pretty, MhatWidth)
+# narrowest/Jeffreys2:
+expect_equal( round(1.04/2.21, 2), round(temp$CI_ratio[1], 2) )
+  
 
 
 # PRIOR AND POST PLOTS FOR ONE META-ANALYSIS  -------------------------------------------------
@@ -310,16 +316,10 @@ if ( rerun.analyses == TRUE ) {
 m2 = bayesmeta(y = .dat$yi,
                sigma = .dat$sei,
                tau.prior = "overallJeffreys",
-               interval.type = "central")
-
-plot(m2)
-
-
-
-m2$dposterior(mu= 0, tau = .1)
+               interval.type = "shortest"
 
 mu_vec = seq( -4, 4, 0.01 )
-tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 2.05, 0.05) )
+tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 2.5, 0.05) )
 
 
 dp = expand_grid( mu = mu_vec,
@@ -331,7 +331,6 @@ dp = dp %>% rowwise() %>%
           mu_post = m2$dposterior(mu = mu),
           tau_post = m2$dposterior(tau = tau) )
 
-m2$dposterior(mu = .1, individual = TRUE)
 
 ### Posterior plot
 p = ggplot(data = dp,
@@ -340,12 +339,12 @@ p = ggplot(data = dp,
                z = joint_post)) +
   
   # posterior mode for mu and 95% CI
-  geom_hline(yintercept = m2$MAP["marginal", "mu"], lty = 2, color = "red") +
+  geom_hline(yintercept = m2$MAP["marginal", "mu"], lty = 1, color = "red") +
   # geom_vline(xintercept = m2$summary["95% lower", "mu"], lty = 2, color = "red") +
   # geom_vline(xintercept = m2$summary["95% upper", "mu"], lty = 2, color = "red") +
   
   # posterior mode for tau and 95% CI
-  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 2, color = "blue") +
+  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 1, color = "blue") +
   # geom_hline(yintercept = m2$summary["95% lower", "tau"], lty = 2, color = "blue") +
   # geom_hline(yintercept = m2$summary["95% upper", "tau"], lty = 2, color = "blue") +
   
@@ -355,7 +354,7 @@ p = ggplot(data = dp,
   ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
 
   
-  scale_x_continuous( limits = c(0, 0.6), breaks = seq(0, 1, .1) ) +
+  scale_x_continuous( limits = c(0, 0.6), breaks = seq(0, 0.6, .1) ) +
   scale_y_continuous( limits = c(-0.9, 0.3), breaks = seq(-1, 1, .1) ) +
   
   
@@ -381,7 +380,7 @@ p = ggplot(data = dp,
                y = mu_post)) +
   
   # posterior mode for mu and 95% CI
-  geom_vline(xintercept = m2$MAP["marginal", "mu"], lty = 2,  linewidth=1.1, color = "red") +
+  geom_vline(xintercept = m2$MAP["marginal", "mu"], lty = 1, color = "red") +
   geom_vline(xintercept = m2$summary["95% lower", "mu"], lty = 2, color = "red") +
   geom_vline(xintercept = m2$summary["95% upper", "mu"], lty = 2, color = "red") +
   
@@ -391,12 +390,12 @@ p = ggplot(data = dp,
   ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
   
   
-  scale_x_continuous( limits = c(-4, 4), breaks = seq(-4, 4, 1) ) +
+  scale_x_continuous( limits = c(-3, 3), breaks = seq(-3, 3, 1) ) +
   
-  theme_bw(base_size = 20) +
+  theme_bw(base_size = 24) +
   
   theme(text = element_text(face = "bold"),
-        axis.title = element_text(size=20),
+        axis.title = element_text(size=24),
         legend.position = "bottom",
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )
@@ -418,23 +417,23 @@ p = ggplot(data = dp,
                y = tau_post)) +
   
   # posterior mode for tau and 95% CI
-  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 2, linewidth=1.1, color = "blue") +
+  geom_vline(xintercept = m2$MAP["marginal", "tau"], lty = 1, color = "blue") +
   geom_vline(xintercept = m2$summary["95% lower", "tau"], lty = 2, color = "blue") +
   geom_vline(xintercept = m2$summary["95% upper", "tau"], lty = 2, color = "blue") +
 
   geom_line(linewidth = 1.1) +
   
   
-  xlab( bquote(mu) ) +
-  ylab( bquote( p(mu ~ "|" ~ hat(theta) ) ) ) +
+  xlab( bquote(tau) ) +
+  ylab( bquote( p(tau ~ "|" ~ hat(theta) ) ) ) +
   
   
-  scale_x_continuous( limits = c(0, 2.2), breaks = seq(0, 2.2, .1) ) +
+  scale_x_continuous( limits = c(0, 2.5), breaks = seq(0, 2.5, .5) ) +
   
-  theme_bw(base_size = 20) +
+  theme_bw(base_size = 24) +
   
   theme(text = element_text(face = "bold"),
-        axis.title = element_text(size=20),
+        axis.title = element_text(size=24),
         legend.position = "bottom",
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )
@@ -646,17 +645,17 @@ rsp$group = factor( rsp$group, levels = rev(correct.order) )
 levels(rsp$group)
 
 # reorder methods
-correct.order = rev( c("DL-HKSJ", "REML-HKSJ", "Exact", "Jeffreys1", "Jeffreys2") )
+correct.order = c("DL-HKSJ", "REML-HKSJ", "Exact", "Jeffreys1-shortest", "Jeffreys2-shortest")
 rsp$method = factor(rsp$method.pretty, levels = correct.order)
 levels(rsp$method)
 
 # same colors as in analyze_sims_helper.R for prettiness
 
-.colors = rev( c("#246105",
+.colors = c("#246105",
                  "black",
                  "#CC9808",
                  "#E075DB",
-                 "#F2340E") )
+                 "#F2340E")
 
 
 # find good x-axis limits
@@ -737,19 +736,19 @@ if ( rerun.analyses == FALSE ) {
 }
 
 # ~ CI width comparisons  -------------------------------------------------
-#@definitely check these and the underlying CI_ratio calculation
+
 update_result_csv( name = "Mean perc narrower Jeffreys2 vs winning other method",
-                   value = round( 100 * ( mean(rsp$CI_ratio) - 1 ) ),
+                   value = round( 100 * ( mean(rsp$CI_ratio - 1) ) ),
                    print = TRUE )
 
 
 update_result_csv( name = "Mean perc narrower Jeffreys2 vs winning other method k=2",
-                   value = round( 100 * ( mean(rsp$CI_ratio[rsp$k==2]) - 1 ) ),
+                   value = round( 100 * ( mean(rsp$CI_ratio[rsp$k==2] - 1 ) ) ),
                    print = TRUE )
 
 # comparing specific CI limits
-exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2"])
-exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2"])
+exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2-shortest"])
+exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "Jeffreys2-shortest"])
 
 exp(rsp$MLo[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-HKSJ"])
 exp(rsp$MHi[ rsp$group == "CV death and myocardial infarction (k = 2)" & rsp$method.pretty == "REML-HKSJ"])
