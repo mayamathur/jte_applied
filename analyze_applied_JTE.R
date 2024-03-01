@@ -658,11 +658,15 @@ levels(rsp$method)
                  "#F2340E")
 
 
+
+# Mhat forest plot -------------------------------------------------
+
 # find good x-axis limits
 summary( exp(rsp$MLo) )
 summary( exp(rsp$MHi) )
 xmin = 0.05
 xmax = 0.85
+
 
 p = ggplot( data = rsp,
             aes( y = group,
@@ -719,6 +723,99 @@ p
 
 
 my_ggsave(name = "zito_forest.pdf",
+          .plot = p,
+          .width = 13,
+          .height = 10,
+          .results.dir = results.dir,
+          .overleaf.dir = overleaf.dir.figs)
+
+
+# Shat forest plot -------------------------------------------------
+
+
+# rename methods
+rsp$method.pretty.tau = rsp$method.pretty
+rsp$method.pretty.tau[ rsp$method.pretty.tau == "DL-HKSJ" ] = "DL-Qprofile"
+rsp$method.pretty.tau[ rsp$method.pretty.tau == "REML-HKSJ" ] = "REML-Qprofile"
+table(rsp$method.pretty.tau)
+
+# reorder methods
+correct.order = c("DL-Qprofile", "REML-Qprofile", "Jeffreys1-shortest", "Jeffreys2-shortest")
+rsp = rsp %>% filter(method.pretty.tau %in% correct.order)
+rsp$method.pretty.tau = factor(rsp$method.pretty.tau, levels = correct.order)
+levels(rsp$method.pretty.tau)
+
+# same colors as in analyze_sims_helper.R for prettiness
+
+.colors = c("#246105",
+            "black",
+            #"#CC9808",
+            "#E075DB",
+            "#F2340E")
+
+
+# find good x-axis limits
+summary( rsp$SLo )
+summary( rsp$SHi )
+xmin = 0
+xmax = 12
+
+
+p = ggplot( data = rsp,
+            aes( y = group,
+                 x = Shat, 
+                 xmin = SLo, 
+                 xmax = SHi,
+                 color = method.pretty.tau) ) +
+  
+  # reference line at null
+  geom_vline(xintercept = 1,
+             lwd = .8,
+             color = "gray") +
+  
+  
+  geom_errorbarh( aes(xmax = SHi,
+                      xmin = SLo),
+                  height = 0,
+                  lwd = 0.8,
+                  position = position_dodge(width = 0.5) ) +
+  
+  
+  geom_point(size=3,
+             position=position_dodge(width = 0.5) ) +
+  
+  # manually provided colors
+  scale_colour_manual(values = .colors,
+                      guide = guide_legend(reverse = TRUE)) +
+  
+  
+  scale_y_discrete( name = "Outcome" ) +
+  # scale_x_continuous( limits = c(xmin, xmax),
+  #                     breaks = seq(xmin, xmax, 0.05) ) +
+  
+  # scale_x_log10(breaks = seq(0.1, 10, 1)) +
+  # coord_cartesian( xlim = c(0.1, 10)) +
+  
+  coord_cartesian( xlim = c(0, 10)) +
+  scale_x_continuous(breaks = seq(0, 10, 1)) +
+  
+  xlab( bquote( bold( hat(tau) ~ "with 95% CI (log-RR scale)") ) ) +
+  
+  labs(color  = "Method") +
+  
+  
+  theme_bw(base_size = 16) +
+  
+  theme( text = element_text(face = "bold"),
+         axis.title = element_text(size=16),
+         panel.grid.major.x = element_blank(),
+         panel.grid.minor.x = element_blank(),
+         legend.position = "bottom" )
+
+p
+
+
+my_ggsave(name = "zito_forest_tau.pdf",
           .plot = p,
           .width = 13,
           .height = 10,
