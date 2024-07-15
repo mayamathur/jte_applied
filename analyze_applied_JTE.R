@@ -34,13 +34,9 @@ toLoad = c("crayon",
            "rma.exact")  
 
 # to install everything
-# lapply(toLoad, install.packages)
-
 lapply( toLoad,
         require,
         character.only = TRUE)
-
-
 
 # prevent masking
 select = dplyr::select
@@ -49,9 +45,11 @@ select = dplyr::select
 # setwd(here())
 # renv::snapshot()
 
-# ~~ User-specified global vars -------------------------
 # no sci notation
 options(scipen=999)
+
+
+# ~~ User-specified global vars -------------------------
 
 # control which results should be redone and/or overwritten
 # but note that not all fns respect this setting
@@ -144,40 +142,7 @@ if ( rerun.analyses == TRUE ) {
     
     
     srr(rep.res)
-    
-    # ### MLE + profile interval
-    # rep.res = run_method_safe(method.label = c("MLE-profile"),
-    #                           method.fn = function() {
-    #                             
-    #                             
-    #                             nll_fun <- function(mu, tau) get_nll(mu, tau, .dat$yi, .dat$sei)
-    #                             my_mle = stats4::mle(minuslogl = nll_fun,
-    #                                                  start = list(mu = 0, tau = 0.1),
-    #                                                  method = "L-BFGS-B")
-    #                             
-    #                             # this fn will complain if optimizer in my_mle hasn't found the true max
-    #                             #  which is a good thing
-    #                             cis = stats4::confint(my_mle)
-    #                             
-    #                             return( list( stats = data.frame( 
-    #                               
-    #                               Mhat = as.numeric( attr(my_mle, "coef")["mu"] ),
-    #                               Shat = as.numeric( attr(my_mle, "coef")["tau"] ),
-    #                               
-    #                               MhatSE = NA,
-    #                               ShatSE = NA,
-    #                               
-    #                               MLo = cis["mu", 1],
-    #                               MHi = cis["mu", 2],
-    #                               
-    #                               SLo = cis["tau", 1],
-    #                               SHi = cis["tau", 2] ) ) )
-    #                             
-    #                           },
-    #                           .rep.res = rep.res )
-    # 
-    # 
-    # srr(rep.res)
+
     
     ### Exact
     rep.res = run_method_safe(method.label = c("Exact"),
@@ -316,7 +281,7 @@ expect_equal( round(1.04/2.21, 2), round(temp$CI_ratio[1], 2) )
 m2 = bayesmeta(y = .dat$yi,
                sigma = .dat$sei,
                tau.prior = "overallJeffreys",
-               interval.type = "shortest"
+               interval.type = "shortest")
 
 mu_vec = seq( -4, 4, 0.01 )
 tau_vec = c( seq(0, 0.1, 0.01), seq(0.1, 0.25, 0.01), seq(0.25, 2.5, 0.05) )
